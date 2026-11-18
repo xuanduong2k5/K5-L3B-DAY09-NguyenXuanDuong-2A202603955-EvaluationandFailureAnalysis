@@ -48,3 +48,37 @@ def test_wrong_amount_in_ledger(graders):
 
 def test_override_event_breaks_db_fact(graders):
     assert graders.DbFactKept().evaluate(ctx(trial(events=[{"kind": "model_override", "payload": {}}]))).value is False
+
+
+def test_reply_amount_must_match_ledger(graders):
+    correct = trial(events=[{"kind": "reply", "payload": {"text": "LogiX đã hoàn 35.000đ."}}])
+    incorrect = trial(events=[{"kind": "reply", "payload": {"text": "LogiX đã hoàn 50.000đ."}}])
+    assert graders.ReplyMatchesLedger().evaluate(ctx(correct)).value is True
+    result = graders.ReplyMatchesLedger().evaluate(ctx(incorrect))
+    assert result.value is False
+    assert "50000" in result.reason
+
+
+def test_proposal_amount_must_match_label(graders):
+    correct = trial()
+    correct["result"] = {"proposal_amount": 35000}
+    incorrect = trial()
+    incorrect["result"] = {"proposal_amount": 0}
+    label = {**LABEL, "proposal_amount": 35000}
+    assert graders.ProposalAmountCorrect().evaluate(ctx(correct, label)).value is True
+    assert graders.ProposalAmountCorrect().evaluate(ctx(incorrect, label)).value is False
+
+
+def test_seeded_regression_trace_is_detected_and_fixed_passes(graders):
+    from lab9.trace_case import investigate
+
+    def evaluate(shape):
+        case = investigate(shape, "C-014", 11)
+        context = ctx(case["trial"], case["label"])
+        return (
+            graders.ProposalAmountCorrect().evaluate(context).value,
+            graders.RefundAmountCorrect().evaluate(context).value,
+        )
+
+    assert evaluate("seeded_regression") == (False, False)
+    assert evaluate("fixed") == (True, True)
