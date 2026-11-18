@@ -49,6 +49,9 @@ def test_integrity_flags_nan_and_dropped_rows():
     assert gate.integrity_check(base, base, SPEC) == []
     nan = _report(copy.deepcopy(ROWS), {"pass_rate": float("nan")})
     assert gate.integrity_check(nan, base, SPEC)
+    missing_value = _report(copy.deepcopy(ROWS), {"pass_rate": 1.0})
+    missing_value["rows"][0]["pass_rate"] = None
+    assert gate.integrity_check(missing_value, base, SPEC)
     dropped = _report(copy.deepcopy(ROWS[:-1]), {"pass_rate": 1.0})
     assert gate.integrity_check(dropped, base, SPEC)
 
